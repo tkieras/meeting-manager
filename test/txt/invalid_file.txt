@@ -1,0 +1,4 @@
+This is one of the very large number of ways that a file might contain invalid data.
+Be sure you test for the different possibilities. One example is a file that has an
+incorrect value for the number of meetings in a room.
+

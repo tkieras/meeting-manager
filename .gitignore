@@ -1,0 +1,7 @@
+archive/*
+docs/*
+Java/*
+Python/*
+
+*.o
+.DS_Store
