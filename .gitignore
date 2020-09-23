@@ -1,8 +1,10 @@
 archive/*
 docs/*
-Java/*
+
 Python/*
 
 *.o
 *.out
 .DS_Store
+*.class
+.*
