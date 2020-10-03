@@ -10,6 +10,7 @@ import java.util.Optional.*;
 import java.util.regex.*;
 import java.util.function.*;
 
+
 public class MeetingManager {
 
     public static void main(String[] args) {
@@ -19,581 +20,240 @@ public class MeetingManager {
             throw new IllegalArgumentException();
         }
 
-        MeetingManager manager = new MeetingManager(System.in, System.out);
+        MeetingManager manager = MeetingManager.initializeEmptyMeetingManager();
         
-        manager.run();
+        Scanner in = new Scanner(System.in);
 
-    }
+        String command;
 
-    public MeetingManager(InputStream in, PrintStream out){
-        this.in = new Scanner(in);
-        this.out = out;
-    }
+        WithMessage<MeetingManager> output;
 
+        do {
+            System.out.print("\nEnter Command: ");
 
-    private final Set<Person> peopleList = new TreeSet<>();
+            command = in.nextLine();
 
-    private final Set<Room> roomList = new TreeSet<>();
-  
-    private final Scanner in;
+            output = CommandFunctions.applyCommand(manager, command);
 
-    private final PrintStream out;
+            System.out.println(output.getMessage());
 
-    public void run() {
-
-        String s1, s2;
-        char c1, c2;
-
-        Pattern whitespace = Pattern.compile("\\s");
-        Pattern character = Pattern.compile("\\w");
-        Pattern defaultDelimiter = in.delimiter();
-
-        while (true) {
-           
-            out.print("\nEnter command: ");
-            
-            // Read two non-whitespace characters with typeahead
-
-            in.useDelimiter("");
-
-            while(in.hasNext(whitespace)) {
-                in.skip(whitespace);
-            }
-
-            s1 = in.next(character);
-
-            while(in.hasNext(whitespace)) {
-                in.skip(whitespace);
-            }
-
-            s2 = in.next(character);
-
-            c1 = s1.charAt(0);
-            c2 = s2.charAt(0);
-
-            in.useDelimiter(defaultDelimiter);
-
-
-            switch(c1){
-                case 'p':
-                    switch(c2){
-                        case 'i': print_individual(); break;
-                        case 'r': print_room(); break;
-                        case 'm': print_meeting(); break;
-                        case 's': print_schedule(); break;
-                        case 'g': print_group(); break;
-                        case 'a': print_allocation(); break;
-                        default:
-                            inputError("Unrecognized command!");
-                    }
-                break;
-                case 'a':
-                    switch(c2){
-                        case 'i': add_individual(); break;
-                        case 'r': add_room(); break;
-                        case 'm': add_meeting(); break;
-                        case 'p': add_participant(); break;
-                        default:
-                            inputError("Unrecognized command!");
-                    }
-                break;
-                case 'r':
-                    switch(c2){
-                        case 'm': reschedule_meeting(); break;
-                        default:
-                            inputError("Unrecognized command!");
-                    }
-                break;
-                case 'd':
-                    switch(c2){
-                        case 'i': delete_individual(); break;
-                        case 'r': delete_room(); break;
-                        case 'm': delete_meeting(); break;
-                        case 'p': delete_participant(); break;
-                        case 's': delete_schedule(); break;
-                        case 'g': delete_group(); break;
-                        case 'a': delete_all(); break;
-                        default:
-                            inputError("Unrecognized command!");
-                    }
-                break;
-                case 's':
-                    switch(c2){
-                        case 'd': save_data(); break;
-                        default:
-                            inputError("Unrecognized command!");
-                    }
-                break;
-                case 'l':
-                    switch(c2){
-                        case 'd': load_data(); break;
-                        default:
-                            inputError("Unrecognized command!");
-                    }
-                break;
-                case 'q':
-                    switch(c2){
-                        case 'q':
-                            delete_all();
-                            out.println("Done");
-                            return;
-                    default:
-                        inputError("Unrecognized command!");
-                    }
-                break;
-                default:
-                    inputError("Unrecognized command!");
-            }
-
-            
-        }
-    
-    }
-
-    private void inputError(String message) {
-        out.printf("%s\n", message);
-
-        if(in.hasNextLine()) {
-            in.nextLine();
-        }
-
-    }
-
-    private Optional<Integer> readNumber() {
-
-        Optional<Integer> number = Optional.empty();
-
-        if(in.hasNextInt()) {
-            number = Optional.of(in.nextInt());
-        } else {
-            inputError("Could not read an integer value!");
-        }
-
-        return number;
-    }
-
-    private Optional<Integer> readRoomNumber() {
-
-        Optional<Integer> number = readNumber();
-
-        Boolean reportNewError = number.isPresent();
-
-        number = number.filter(Room::roomNumberInRange);
-
-        if(reportNewError && !number.isPresent()) {
-            inputError("Room number is not in range!");
-        }
-
-        return number;
-
-    }
-
-
-    private Optional<Integer> readTime() {
-
-        Optional<Integer> time = readNumber();
-
-        Boolean reportNewError = time.isPresent();
-
-        time = time.filter(Meeting::isValidTime);
-
-        if(reportNewError && !time.isPresent()) {
-            inputError("Time is not in range!");
-        }
-
-        return time;
-
-    }
-
-    private Optional<Person> readAndFindPerson() {
-
-        String lastName = in.next();
-        
-        Optional<Person> person = peopleList.stream()
-                  .filter(p -> p.getLastName().equals(lastName))
-                  .findAny();
-
-        if(!person.isPresent()) {
-            inputError("No person with that name!");
-        }
-        
-        return person;       
-    }
-
-    private Optional<Room> readAndFindRoom() {
-        
-        return readRoomNumber().flatMap((n) -> {
-            Optional<Room> room = roomList.stream()
-                                          .filter(r -> r.getNumber() == n)
-                                          .findAny();
-
-            if(!room.isPresent()) {
-              inputError("No room with that number!");
-            }
-            return room;
-        });
-       
-    }
-
-    private Optional<Meeting> readAndFindMeeting(Room room) {
-
-        return readTime().flatMap((t) -> {
-            if(!room.meetingAtTime(t)) {
-                inputError("No meeting at that time!");
-                return Optional.empty();
-            }
-            return room.getMeeting(t);
-            });
-    }
-
-    private Optional<Meeting> readAndFindMeeting() {
-
-        return readAndFindRoom().flatMap((r) -> readAndFindMeeting(r));
-    }
-
-    private void print_individual(){ 
-
-       readAndFindPerson().ifPresent((p) -> p.print(out));
-    
-    }
-    private void print_room(){
-
-        readAndFindRoom().ifPresent((r) -> r.print(out));  
-    }
-    private void print_meeting(){
-
-        readAndFindMeeting().ifPresent((m) -> m.print(out));
-    }
-
-    private void print_schedule(){
-
-        if(!roomList.isEmpty()) {
-        
-            out.println("Information for " + roomList.size() + " rooms:");
-
-            roomList.stream().forEach((r) -> r.print(out));
-
-        }
-        else {
-            out.println("List of rooms is empty");
-        }
-
-    }
-
-    private void print_group(){
-
-        if(!peopleList.isEmpty()){
-
-           out.println("Information for " + peopleList.size() + " people:");
-
-           peopleList.stream().forEach((p) -> p.print(out));
-
-        }
-        else {
-            out.println("List of people is empty");
-        }
-
-    }
-
-    private void print_allocation(){
-
-        Integer meetingCount = roomList.stream()
-            .map(Room::getMeetingCount)
-            .reduce(0, Integer::sum);
-    
-        out.println("Memory allocations:");
-        
-        out.println("Persons: " + peopleList.size()); 
-        
-        out.println("Meetings: " + meetingCount);
-        
-        out.println("Rooms: " + roomList.size());
-    }
-
-    private void add_individual(){
-
-        String firstName = in.next();
-        
-        String lastName = in.next();
-        
-        String phoneNumber = in.next();
-
-        Person newPerson = new Person(firstName, lastName, phoneNumber);
-
-        if(peopleList.contains(newPerson)) {
-            
-            inputError("There is already a person with this last name!");
-        }
-        else {
-            
-            peopleList.add(newPerson);
-
-            out.println("Person " + newPerson.getLastName() + " added");   
-
-        }
-    }
-    
-    private void add_room(){
-
-        readRoomNumber()
-            .flatMap((n) -> {
-                Optional<Room> room = roomList.stream()
-                                              .filter(r -> r.getNumber() == n)
-                                              .findAny();
-
-                if(room.isPresent()) {
-                    inputError("There is already a room with this number!");
-                    return Optional.empty();
-                }
-                return Optional.of(n);})
-            .ifPresent((n) -> {
-                roomList.add(new Room(n));
-
-                out.println("Room " + n + " added!");});
-
-    }
-    
-    private void add_meeting(){
-
-        readAndFindRoom()
-            .ifPresent((r) -> {
-                readTime()
-                    .flatMap((t) -> {
-                        if(r.meetingAtTime(t)) {
-                            inputError("There is already a meeting at that time!");
-                            return Optional.empty();
-                        }
-                        return Optional.of(t);})
-                    .ifPresent((t) -> {
-                        String topic = in.next();
-                        r.addMeeting(new Meeting(t, topic));
-                        out.println("Meeting added at " + t);});
-            });
-
-    }
-    
-    private void add_participant(){
-        
-        readAndFindMeeting()
-            .ifPresent((m) -> {
-                readAndFindPerson()
-                    .flatMap((p) -> {
-                        if(m.personIsParticipant(p)) {
-                            inputError("This person is already a participant!");
-                            return Optional.empty();
-                        }
-                        return Optional.of(p);})
-                    .ifPresent((p) -> {
-                        m.addParticipant(p);
-                        out.println("Participant "
-                            + p.getLastName() 
-                            + " added");
-                    });     
-            });
-
-    }
-    
-    private void reschedule_meeting(){
-
-        Optional<Room> oldRoom = readAndFindRoom();
-
-        oldRoom.ifPresent((or) -> {
-            Optional<Meeting> meeting = readAndFindMeeting(or);
-
-            meeting.ifPresent((m) -> {
-                Optional<Room> newRoom = readAndFindRoom();
-
-                Optional<Integer> newTime = readTime();
-
-                newTime.ifPresent((t) -> {
-
-                    newRoom.ifPresent((r) -> {
-                        if(r.meetingAtTime(t)) {
-                            inputError("There is already a meeting at that time!");
-                        }
-                        else {
-                            or.deleteMeeting(m);
-                            m.setTime(t);
-                            r.addMeeting(m);
-                            out.println("Meeting rescheduled to room "
-                                + r.getNumber()
-                                + " at " + t);
-
-                        }
-                    });
-                });
-            });
-        });
-    }
-
-    
-    private void delete_individual(){
-
-        readAndFindPerson().ifPresent(p -> {
-            if(roomList.stream().noneMatch(r -> r.personIsParticipantInRoom(p))) {
-                peopleList.remove(p);
-                out.println("Person " + p.getLastName() + " deleted");
-            } else {
-                inputError("This person is a participant in a meeting!");
-            }
-        });
-
-    }
-    
-    private void delete_room(){
-        readAndFindRoom()
-            .ifPresent((r) -> {
-                roomList.remove(r);
-                out.println("Room " + r.getNumber() + " deleted");
-            });
-    }
-    
-    private void delete_meeting(){
-        readAndFindRoom()
-            .ifPresent((r) -> {
-                readAndFindMeeting(r)
-                    .ifPresent((m) -> {
-                        r.deleteMeeting(m);
-                        out.println("Meeting at " 
-                            + m.getTime()
-                            + " deleted");
-                    });
-            });
-    }
-
-    private void delete_participant(){
-
-        
-        readAndFindMeeting()
-            .ifPresent((m) -> {
-                readAndFindPerson()
-                    .ifPresent((p) -> {
-                        if(!m.personIsParticipant(p)) {
-                            inputError("This person is not a participant in the meeting!");
-                        } else {
-                            m.deleteParticipant(p);
-                            out.println("Participant " 
-                                + p.getLastName() 
-                                + " deleted");
-
-                        }
-                    });
-            });
+            manager = output.getObject();
             
 
-    }
+            // System.out.println("debugging:");
 
-    private void delete_schedule(){
-        
-        roomList.clear();
+            // manager.peopleList.stream().forEach(p -> System.out.println(p.print()));
 
-        out.println("All meetings deleted");
-    }
+            // manager.roomList.stream().forEach(r -> System.out.println(r.print()));
 
-    private void delete_group(){
-                                       
-        if(roomList.stream().allMatch( r -> r.getMeetingCount() == 0)) {
-            peopleList.clear();
-        
-            out.println("All persons deleted");
+            // System.out.println("end debugging");
 
-        } else {
-            inputError("Cannot clear people list unless there are no meetings!");
-        }
 
-    }
-
-    private void delete_all(){
-
-        roomList.clear();
-
-        peopleList.clear();
-        
-        out.println("All rooms and meetings deleted");
-    }
-
-    private void save_data(){
-
-        String filename = in.next();
-
-        try(PrintStream outFile = new PrintStream(
-            Files.newOutputStream(Paths.get(filename)))) {
-
-            outFile.println(peopleList.size());
-
-            peopleList.stream().forEach(p -> outFile.println(p.toString()));
-
-            outFile.println(roomList.size());
-
-            roomList.stream().forEach(r -> r.save(outFile));
-            
-            out.println("Data saved");
-
-        }catch(IOException ioe) {
-
-            throw new RuntimeException(ioe);
-        }
-
-    }
-    private void load_data(){
-
-        String filename = in.next();
-        
-        Charset cs = StandardCharsets.UTF_8;
-
-        try(BufferedReader in = Files.newBufferedReader(
-            Paths.get(filename), cs)) {
-
-            String line = in.readLine();
-
-            Integer peopleListCount = new Integer(line);
-
-            for(int i = 0; i < peopleListCount; i++) {
-                String[] personInfo = in.readLine().split(" ");
-
-                Person newPerson = new Person(personInfo[0], personInfo[1], personInfo[2]);
-
-                peopleList.add(newPerson);
-                
-            }
-
-            line = in.readLine();
-
-            Integer roomListCount = new Integer(line);
-
-            for(int i = 0; i < roomListCount; i++) { 
-
-                Optional<Room> newRoom = Room.loadRoom(in, peopleList);
-
-                newRoom.ifPresent((r) -> roomList.add(r));
-
-            }
-
-            if(roomList.size() != roomListCount || peopleList.size() != peopleListCount) {
-                
-                inputError("Invalid data found in file!");
+            if (command.trim().startsWith("qq")) {
                 return;
             }
-
-            out.println("Data loaded");
-
-        }catch(NoSuchFileException f) {
-
-            inputError("Could not open file!");
-
-        }catch(NumberFormatException e) {
-
-            inputError("Invalid data found in file!");
-        
-        }catch(IOException ioe) {
-            
-            throw new RuntimeException(ioe);
         }
+        while (true);
 
+    }
+
+
+    public static MeetingManager addRoom(MeetingManager mm, Integer number) {
+
+        Room newRoom = Room.initializeEmptyRoom(number);
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.add(newRoom);
+
+        Collections.sort(newRoomList);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+
+    }
+
+    public static MeetingManager deleteRoom(MeetingManager mm, Room r) {
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.remove(r);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+    }
+
+    public static MeetingManager updateRoom(MeetingManager mm, Room srcRoom, Room updatedSrcRoom) {
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.remove(srcRoom);
+        
+        newRoomList.add(updatedSrcRoom);
+
+        Collections.sort(newRoomList);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+
+    }
+
+
+    public static MeetingManager addIndividual(MeetingManager mm, String arg1, String arg2, String arg3) {
+        Person newPerson = new Person(arg1, arg2, arg3);
+
+        List<Person> newPeopleList = new ArrayList<Person>(mm.peopleList);
+
+        newPeopleList.add(newPerson);
+
+        Collections.sort(newPeopleList);
+        
+        return new MeetingManager(newPeopleList, mm.roomList);
+    }
+
+    public static MeetingManager deleteIndividual(MeetingManager mm, Person p) {
+        List<Person> newPeopleList = new ArrayList<Person>(mm.peopleList);
+
+        newPeopleList.remove(p);
+
+        return new MeetingManager(newPeopleList, mm.roomList);
+    }
+
+    public static MeetingManager deleteGroup(MeetingManager mm) {
+
+        return new MeetingManager(new ArrayList<Person>(), mm.roomList);
+    }
+
+
+    public static MeetingManager deleteSchedule(MeetingManager mm) {
+
+        return new MeetingManager(mm.peopleList, new ArrayList<Room>());
+    }
+
+    public static MeetingManager addMeeting(MeetingManager mm, Room r, List<String> commandList) {
+
+        Integer time = Integer.parseInt(commandList.get(2));
+
+        Meeting newMeeting = Meeting.initializeEmptyMeeting(time, commandList.get(3));
+
+        Room newRoom = Room.addMeeting(r, newMeeting);
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.remove(r);
+
+        newRoomList.add(newRoom);
+
+        Collections.sort(newRoomList);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+
+    }
+
+    public static MeetingManager deleteMeeting(MeetingManager mm, Room r, Integer time) {
+
+        Meeting m = r.getMeeting(time);
+
+        Room newRoom = Room.deleteMeeting(r, m);
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.remove(r);
+
+        newRoomList.add(newRoom);
+
+        Collections.sort(newRoomList);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+
+    }
+
+    public static MeetingManager addParticipant(MeetingManager mm, Room r, Meeting m, Person p) {
+
+        Meeting newMeeting = Meeting.addParticipant(m, p);
+
+        Room newRoom = Room.deleteMeeting(r, m);
+        
+        newRoom = Room.addMeeting(newRoom, newMeeting);
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.remove(r);
+
+        newRoomList.add(newRoom);
+
+        Collections.sort(newRoomList);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+
+
+    }
+
+    public static MeetingManager deleteParticipant(MeetingManager mm, Room r, Meeting m, Person p) {
+
+        Meeting newMeeting = Meeting.deleteParticipant(m, p);
+
+        Room newRoom = Room.deleteMeeting(r, m);
+        
+        newRoom = Room.addMeeting(newRoom, newMeeting);
+
+        List<Room> newRoomList = new ArrayList<Room>(mm.roomList);
+
+        newRoomList.remove(r);
+
+        newRoomList.add(newRoom);
+
+        Collections.sort(newRoomList);
+
+        return new MeetingManager(mm.peopleList, newRoomList);
+
+    }
+
+
+    public static MeetingManager initializeEmptyMeetingManager() {
+        return new MeetingManager();
+    }
+
+    public static MeetingManager initializeFullMeetingManager(List<Person> peopleList, List<Room> roomList) {
+        return new MeetingManager(peopleList, roomList);
+    }
+
+    private MeetingManager(){
+        peopleList = Collections.unmodifiableList(new ArrayList<Person>());
+        roomList = Collections.unmodifiableList(new ArrayList<Room>());
+    }
+    private MeetingManager(List<Person> newPeopleList, List<Room> newRoomList) {
+        peopleList = Collections.unmodifiableList(newPeopleList);
+        roomList = Collections.unmodifiableList(newRoomList);
+    }
+
+
+    private final List<Person> peopleList;
+
+    private final List<Room> roomList;
+
+    public boolean roomExists(int number) {
+        return roomList.stream().anyMatch( r -> r.getNumber() == number);
+    }
+
+    public Room getRoom(int number) {
+        return roomList.stream().filter( r -> r.getNumber() == number).findAny().get();
+    }
+
+    public boolean personExists(String lastName) {
+        return peopleList.stream().anyMatch( p -> p.getLastName().equals(lastName));
+    }
+
+    public Person getPerson(String lastName) {
+        return peopleList.stream().filter( p -> p.getLastName().equals(lastName)).findAny().get();
+    }
+
+    public List<Room> getRoomList() {
+        return roomList;
+    }
+
+    public List<Person> getPeopleList() {
+        return peopleList;
     }
 
 }
-            
 
             
         

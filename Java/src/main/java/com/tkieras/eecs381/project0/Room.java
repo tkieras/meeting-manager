@@ -3,6 +3,7 @@ package com.tkieras.eecs381.project0;
 import java.util.*;
 import java.io.*;
 
+import java.util.stream.*;
 
 public class Room implements Comparable<Room> {
 
@@ -11,26 +12,30 @@ public class Room implements Comparable<Room> {
 	}
 
 	public static Optional<Room> loadRoom(BufferedReader in, 
-		Set<Person> peopleList) throws IOException {
+		List<Person> peopleList) throws IOException {
 
-		String[] roomInfo = in.readLine().split(" ");
+		List<String> roomInfo = Arrays.asList(in.readLine().split(" "));
 
-		Room newRoom = new Room(new Integer(roomInfo[0]));
+		Integer number = Integer.parseInt(roomInfo.get(0));
 
-        Integer meetingListCount = new Integer(roomInfo[1]);
+        Integer meetingListCount = Integer.parseInt(roomInfo.get(1));
+
+        List<Meeting> meetingList = new ArrayList<>();
 
         for(int j = 0; j < meetingListCount; j++) {
             Optional<Meeting> newMeeting = Meeting.loadMeeting(in, peopleList);
 
-            if(!newMeeting.isPresent()) {
+            if (!newMeeting.isPresent()) {
                 return Optional.empty();
             }
 
-            newRoom.addMeeting(newMeeting.get());
+            meetingList.add(newMeeting.get());
 
         }
 
-        if(newRoom.getMeetingCount() != meetingListCount) {
+        Room newRoom = Room.initializeFullRoom(number, meetingList);
+
+        if (newRoom.getMeetingCount() != meetingListCount) {
         	return Optional.empty();
 
         }
@@ -39,43 +44,80 @@ public class Room implements Comparable<Room> {
 
 	}
 
+	public static Room addMeeting(Room r, Meeting m) {
+
+		List<Meeting> newMeetingList = new ArrayList<>(r.meetingList);
+
+		newMeetingList.add(m);
+
+		Collections.sort(newMeetingList);
+
+		return new Room(r, newMeetingList);
+	}
+
+	public static Room deleteMeeting(Room r, Meeting m) {
+
+		List<Meeting> newMeetingList = new ArrayList<>(r.meetingList);
+
+		newMeetingList.remove(m);
+
+		return new Room(r, newMeetingList);
+	}
+
+	public static Room initializeEmptyRoom(int number) {
+		return new Room(number);
+	}
+
+	public static Room initializeFullRoom(int number, List<Meeting> meetingList) {
+		return new Room(number, meetingList);
+	}
+
 	private final int number;
 	
-	private final Set<Meeting> meetingList = new TreeSet<>();
+	private final List<Meeting> meetingList;
 
-	public Room(int number) {
-		this.number = number;
+	private Room(Room r, List<Meeting> newMeetingList) {
+		this.number = r.getNumber();
+		this.meetingList = Collections.unmodifiableList(newMeetingList);
 	}
+
+	private Room(int number) {
+		this.number = number;
+		this.meetingList = Collections.unmodifiableList(new ArrayList<Meeting>());
+	}
+
+	private Room(int number, List<Meeting> meetingList) {
+		this.number = number;
+		this.meetingList = Collections.unmodifiableList(meetingList);
+	}
+
 
 	public int getNumber() {
 		return number;
 	}
 
-	public void print(PrintStream out) {
-		out.println("--- Room " + number + " ---");
+	public String print() {
+		String result = "--- Room " + number + " ---" + "\n";
 
-		if(meetingList.isEmpty()) {
-			out.println("No meetings are scheduled");
+
+		if (meetingList.isEmpty()) {
+			
+			result += "No meetings are scheduled" + "\n";
+
+		} else {
+			result += meetingList.stream().map(Meeting::print).collect(Collectors.joining("\n"));
+		
 		}
-		else {
-			meetingList.stream().forEach(m -> m.print(out));
-		}
+		
+		return result;
 	}
 
-	public boolean addMeeting(Meeting meeting) {
-		return meetingList.add(meeting);
-	}
-
-	public Optional<Meeting> getMeeting(int time) {
+	public Meeting getMeeting(int time) {
 
 		return meetingList.stream()
 						  .filter(m -> m.getTime() == time)
-						  .findAny();
+						  .findAny().get();
 
-	}
-
-	public void deleteMeeting(Meeting meeting) {
-		meetingList.remove(meeting);
 	}
 
 	public int getMeetingCount() {
@@ -83,12 +125,12 @@ public class Room implements Comparable<Room> {
 	}
 
 	public boolean personIsParticipantInRoom(Person person) {
-		return meetingList.stream().noneMatch((Meeting m) -> m.personIsParticipant(person));
+		return meetingList.stream().anyMatch((Meeting m) -> m.personIsParticipant(person));
 		
 	}
 
 	public boolean meetingAtTime(int time) {
-		return meetingList.stream().noneMatch(m -> m.getTime() == time);
+		return meetingList.stream().anyMatch(m -> m.getTime() == time);
 	}
 
 	public void save(PrintStream out) {
@@ -98,15 +140,12 @@ public class Room implements Comparable<Room> {
 		
 	}
 
-	public void load() {};
-
-
 	@Override
 	public boolean equals(Object obj) {
-		if(obj == this) {
+		if (obj == this) {
 			return true;
 		}
-		if((obj == null) || (getClass() != obj.getClass())) {
+		if ((obj == null) || (getClass() != obj.getClass())) {
 			return false;
 		}
 
@@ -117,11 +156,11 @@ public class Room implements Comparable<Room> {
 
 	@Override
 	public int hashCode() {
-		return new Integer(number).hashCode();
+		return Integer.valueOf(number).hashCode();
 	}
 
 	public int compareTo(Room that) {
-		return new Integer(number).compareTo(new Integer(that.number));
+		return Integer.valueOf(number).compareTo(Integer.valueOf(that.number));
 	}
 
 

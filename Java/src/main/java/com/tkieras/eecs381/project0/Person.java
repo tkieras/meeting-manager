@@ -27,8 +27,8 @@ public class Person implements Comparable<Person> {
 		return phoneNumber;
 	}
 
-	public void print(PrintStream out) {
-		 out.printf(String.format("%s %s %s\n", firstName, lastName, phoneNumber));
+	public String print() {
+		 return String.format("%s %s %s", firstName, lastName, phoneNumber);
 	}
 
 	@Override
