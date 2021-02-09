@@ -1,0 +1,63 @@
+/* Notes:
+1. Two or more strings on the same line would be part of the same
+line of output, with some variable value output between them.
+
+2. If there is no actual constant non-whitespace text involved in an output statement, it
+is not shown here. For example, the output statement for printing a Person's data just
+outputs the data with one space between each item.
+*/
+
+/************ Information messages ***************
+/* top level messages */
+"\nEnter command: "
+"Done"
+
+// print command messages
+ "List of people is empty"  
+ "Information for "  " people:"
+ "List of rooms is empty"  
+ "Information for "  " rooms:"  
+ "--- Room "  " ---"  
+ "No meetings are scheduled"  
+ "Meeting time: "    ", Topic: "   "\nParticipants:"  
+ " None"  
+ "Memory allocations:"  
+ "Persons: "  
+ "Meetings: "  
+ "Rooms: "  
+ 
+// add/delete/load/save command messages
+ "Person " " added"  
+ "Room " " added"  
+ "Meeting added at "  
+ "Participant " " added"  
+ "Meeting rescheduled to room "  " at "    
+ "Person " " deleted"
+ "Room " " deleted"
+ "Meeting at " " deleted"
+ "Participant " " deleted"
+ "All meetings deleted"  
+ "All rooms and meetings deleted"  
+ "All persons deleted"  
+ "Data saved"
+ "Data loaded"
+ 
+/******** Error messages *********/
+
+ "Unrecognized command!" 
+ "There is already a person with this last name!"
+ "There is already a meeting at that time!"  
+ "There is already a room with this number!"
+ "This person is already a participant!"  
+ "This person is a participant in a meeting!"
+ "This person is not a participant in the meeting!" 
+ "Cannot clear people list unless there are no meetings!"  
+ "No person with that name!"  
+ "No room with that number!"  
+ "No meeting at that time!"  
+ "No meeting at that time!"  
+ "Room number is not in range!"  
+ "Time is not in range!"  
+ "Could not read an integer value!"  
+ "Could not open file!"
+ "Invalid data found in file!"
